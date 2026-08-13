@@ -1,0 +1,15 @@
+﻿Author
+Thunder[Beer][HU]
+
+Version
+v1.1
+
+BigDesc
+The HeritAge - Mission 07||Created by [$800080]Thunder[HU][]
+
+PlayableAsSP
+
+BlockTeamSelection
+
+BlockColorSelection
+

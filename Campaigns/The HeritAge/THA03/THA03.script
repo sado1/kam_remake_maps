@@ -1,0 +1,9 @@
+procedure OnTick;
+var LL:integer;
+begin
+//messages
+LL:= States.GameTime;
+case LL of
+50:Actions.ShowMsg(0, '<$1>');
+	end;
+end;

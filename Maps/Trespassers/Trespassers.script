@@ -1,0 +1,483 @@
+{$CUSTOM_TH_TROOP_COST 1,3,3,10,10}
+{$I constants.script}  /// By Greeny
+{$I improvestaticai.script}  /// By Strangelove
+{$I DamageCloseBuildings.script} /// By Ritter des Todes
+{$I BaseBuild.script}
+{$I zzcmAntiLure.script} /// By Cmowla
+
+Type
+	UnitInfo = Record
+		UnitType, X, Y, Dir, Owner, Time, DestX, DestY: Integer;
+	end;
+
+	GroupInfo = Record
+		DefenseIndex, UnitType, X, Y, Dir, Owner, Count, ColumnCnt, Time, DestX, DestY: Integer;
+	end;
+
+var
+	DifficultySetting: TKMMissionDifficulty;
+	IronCollected, IronRequired, EventDelay: Integer;
+	convertedUnits: Array of UnitInfo;
+	convertedGroups: Array of GroupInfo;
+	Mercenaries, Paid: Boolean;
+	AIattack: array[0..1] of Boolean;
+	pointxy: TKMPoint;
+
+function TotalResourceAmount(iPlayer, iType: Byte): Integer;
+var
+	i, iTotalResourceAmount: Integer;
+	aHouses: array of Integer;
+begin
+	Result := -1;
+	aHouses := States.PlayerGetAllHouses(iPlayer);
+	for i := 0 to Length(aHouses) -1 do
+	begin
+		if (States.HouseType(aHouses[i]) = 11) then
+			iTotalResourceAmount := iTotalResourceAmount +States.HouseResourceAmount(aHouses[i], iType);
+		if (Result = -1) and (i = (Length(aHouses) -1)) then
+			Result := iTotalResourceAmount;
+	end;
+end;
+
+Function All_Houses_Of_Type(player, houseType: Integer): Array of Integer;
+var i: Integer; allHouses: Array of Integer;
+begin
+	allHouses := States.PlayerGetAllHouses(player);
+	For i := 0 to Length(allHouses) - 1 do
+		If States.HouseType(allHouses[i]) = houseType Then begin
+			SetLength(Result, Length(Result) + 1);
+			Result[High(Result)] := allHouses[i];
+		end;
+end;
+
+Procedure CreateConvertedUnits;
+var I, unitID, counter: Integer;
+begin
+	If Length(convertedUnits) = 0 Then Exit;
+	For I := Length(convertedUnits) - 1 downTo 0 do begin
+		With convertedUnits[I] do begin
+			If S.GameTime - convertedUnits[I].Time < 2 Then Break;
+			Inc(counter);
+			unitID := A.GiveUnit(Owner, UnitType, X, Y, Dir);
+			A.UnitOrderWalk(unitID, DestX, DestY);
+		end;
+	end;
+	If counter > 0 Then SetLength(convertedUnits, Length(convertedUnits) - counter);
+end;
+
+Procedure CreateConvertedGroups;
+var I, groupID, counter: Integer;
+begin
+	If Length(convertedGroups) = 0 Then Exit;
+	For I := Length(convertedGroups) - 1 downTo 0 do begin
+		With convertedGroups[I] do begin
+			If S.GameTime - convertedGroups[I].Time < 2 Then Break;
+			Inc(counter);
+			groupID := A.GiveGroup(Owner, UnitType, X, Y, Dir, Count, ColumnCnt);
+			A.GroupOrderWalk(groupID, DestX, DestY, Dir);
+		end;
+	end;
+	If counter > 0 Then SetLength(convertedGroups, Length(convertedGroups) - counter);
+end;
+
+
+Procedure PrependUnitInfo(var arr: Array of UnitInfo; elm: UnitInfo);
+var I: Integer;
+begin
+	SetLength(arr, Length(arr) + 1);
+	For I := Length(arr) - 1 downTo 1 do arr[I] := arr[I - 1];
+	arr[0] := elm;
+end;
+
+
+Procedure PrependGroupInfo(var arr: Array of GroupInfo; elm: GroupInfo);
+var I: Integer;
+begin
+	SetLength(arr, Length(arr) + 1);
+	For I := Length(arr) - 1 downTo 1 do arr[I] := arr[I - 1];
+	arr[0] := elm;
+end;
+
+
+Procedure ConvertUnitsInRect(oldOwner, newOwner, toX, toY, minX, minY, maxX, maxY: Integer);
+var x, y, unitID: Integer; aUnitInfo: UnitInfo;
+begin
+	For x := minX to maxX do
+	For y := minY to maxY do begin
+		unitID := S.UnitAt(x, y);
+		If (unitID <> -1) And (S.UnitOwner(unitID) = oldOwner) Then begin
+			With aUnitInfo do begin
+				unitType := S.UnitType(unitID);
+				X := S.UnitPositionX(unitID);
+				Y := S.UnitPositionY(unitID);
+				Dir := S.UnitDirection(unitID);
+				Time := S.GameTime;
+				Owner := newOwner;
+				DestX := toX;
+				DestY := toY;
+			end;
+
+			If Length(convertedUnits) = 0
+			Then convertedUnits := [aUnitInfo]
+			Else PrependUnitInfo(convertedUnits, aUnitInfo);
+
+			A.UnitKill(unitID, True);
+		end;
+	end;
+end;
+
+
+Procedure ConvertTroops(oldOwner, newOwner, toX, toY, unitType, groupCount, defenseType: Integer);
+var	indexx: Integer; aGroupInfo: GroupInfo; defense: TKMDefencePositionInfo;
+begin
+	For indexx := 0 to S.StatAIDefencePositionsCount(oldOwner) - 1 do begin
+		defense := S.AIDefencePositionGetByIndex(oldOwner, indexx);
+		If (defense.groupID > 0) //group ID exists
+		And (S.GroupTypeEx(defense.groupID) <> gtNone) //Group exists.
+		And (Ord(defense.PositionType) = defenseType)
+		And (S.GroupMemberCount(defense.GroupID) = groupCount)
+		And (S.UnitType(S.GroupMember(defense.GroupID, 0)) = unitType)
+		Then begin
+			With aGroupInfo do begin
+				DefenseIndex := indexx;
+				UnitType := S.UnitType(S.GroupMember(defense.GroupID, 0));
+				X := S.UnitPositionX(S.GroupMember(defense.GroupID, 0));
+				Y := S.UnitPositionY(S.GroupMember(defense.GroupID, 0));
+				Dir := S.UnitDirection(S.GroupMember(defense.GroupID, 0));
+				Time := S.GameTime;
+				Owner := newOwner;
+				Count := S.GroupMemberCount(defense.GroupID);
+				ColumnCnt := S.GroupColumnCount(defense.GroupID);
+				DestX := toX;
+				DestY := toY;
+			end;
+			If Length(convertedGroups) = 0
+			Then convertedGroups := [aGroupInfo]
+			Else PrependGroupInfo(convertedGroups, aGroupInfo);
+			A.GroupKillAll(defense.GroupID, True);
+		end;
+	end;
+end;
+
+Procedure Remove_Iron_From_Houses(player, amount: Integer);
+var i, j, total, previousTotal, currentIronQty: Integer; ironHouses: Array of Array of Integer;
+begin
+	SetLength(ironHouses, 6);
+
+//Change the order of these lines for priority (Optional)	
+	ironHouses[i] := All_Houses_Of_Type(player, HOUSE_STOREHOUSE);	    Inc(i);
+	ironHouses[i] := All_Houses_Of_Type(player, HOUSE_IRON_SMITHY);		Inc(i);
+	ironHouses[i] := All_Houses_Of_Type(player, HOUSE_ARMOR_SMITHY);	Inc(i);
+	ironHouses[i] := All_Houses_Of_Type(player, HOUSE_WEAPON_SMITHY);	Inc(i);
+	ironHouses[i] := All_Houses_Of_Type(player, HOUSE_MARKETPLACE);		Inc(i);
+	ironHouses[i] := All_Houses_Of_Type(player, HOUSE_SIEGE_WORKSHOP);	Inc(i);
+
+	total := 0;
+	For i := 0 to High(ironHouses) do begin
+		For j := 0 to Length(ironHouses[i]) - 1 do begin
+			currentIronQty := S.HouseResourceAmount(ironHouses[i][j], WARE_IRON);
+			total := total + currentIronQty;
+			If total > amount Then begin
+				A.HouseTakeWaresFrom(ironHouses[i][j], WARE_IRON, amount - previousTotal);
+				Exit;
+			end Else begin
+				previousTotal := total;
+				A.HouseTakeWaresFrom(ironHouses[i][j], WARE_IRON, currentIronQty);
+			end;
+		end;
+	end;
+end;
+
+procedure feedPlayer(P: Integer);
+var
+  K: Integer;
+  UnitsToFeed: array of Integer;
+begin
+  UnitsToFeed := States.PlayerGetAllUnits(P);
+  for K := 0 to Length(UnitsToFeed) - 1 do
+  begin
+    Actions.UnitHungerSet(UnitsToFeed[K],States.UnitMaxHunger);
+  end;
+end;
+
+procedure OnMissionStart();
+begin
+A.ShowMsg(0, '<$1>');
+Mercenaries:= false;
+EventDelay:= 9999999999999;
+DifficultySetting := S.MissionDifficulty();
+A.PlayerShareFogCompliment(0, 1, False);
+A.PlayerShareFogCompliment(0, 11, False);
+A.FogCoverAll(0);
+A.FogRevealCircle(0, 40, 65, 21);
+Paid:= false;
+case DifficultySetting of
+	    mdEasy1:
+        begin
+		IronRequired:= 45;
+		A.GiveWares(0, WARE_GOLD, 50);
+		A.GiveWares(0, WARE_STONES, 30);
+		A.GiveWares(0, WARE_TIMBER, 30);
+		A.GiveWares(0, WARE_WINE, 30);
+		A.GiveWares(0, WARE_SAUSAGES, 20);
+		A.GiveWares(0, WARE_LOAVES, 20);
+		A.GiveWares(0, WARE_FISH, 20);
+		///AI eq rates
+		A.AIEquipRate(4, 0, 600);
+		A.AIEquipRate(5, 0, 350);
+		A.AIEquipRate(5, 1, 425);
+		A.AIEquipRate(7, 1, 400);
+		A.AIEquipRate(8, 0, 450);
+		A.AIEquipRate(8, 1, 550);
+		A.AIEquipRate(9, 0, 450);
+		A.AIEquipRate(9, 1, 550);
+		///Delay Enemy
+		A.AIRecruitDelay(4, 26000);
+		A.AIRecruitDelay(5, 27000);
+		A.AIRecruitDelay(7, 34000);
+		A.AIRecruitDelay(8, 44000);
+		A.AIRecruitDelay(9, 44000);
+		///Delay Mercenaries
+		A.AIRecruitDelay(11, 99999999999999);
+		end;
+
+		mdNormal:
+        begin
+		IronRequired:= 55;
+		A.GiveWares(0, WARE_GOLD, 40);
+		A.GiveWares(0, WARE_STONES, 25);
+		A.GiveWares(0, WARE_TIMBER, 25);
+		A.GiveWares(0, WARE_WINE, 20);
+		A.GiveWares(0, WARE_SAUSAGES, 20);
+		A.GiveWares(0, WARE_LOAVES, 20);
+		A.GiveWares(0, WARE_FISH, 20);
+		///AI eq rate
+		A.AIEquipRate(4, 0, 475);
+		A.AIEquipRate(5, 0, 300);
+		A.AIEquipRate(5, 1, 425);
+		A.AIEquipRate(7, 1, 325);
+		A.AIEquipRate(8, 0, 375);
+		A.AIEquipRate(8, 1, 425);
+		A.AIEquipRate(9, 0, 375);
+		A.AIEquipRate(9, 1, 425);
+		///Delay Enemy
+		A.AIRecruitDelay(4, 22500);
+		A.AIRecruitDelay(5, 24500);
+		A.AIRecruitDelay(7, 29500);
+		A.AIRecruitDelay(8, 39500);
+		A.AIRecruitDelay(9, 39500);
+		///Delay Mercenaries
+		A.AIRecruitDelay(11, 99999999999999);
+		end;
+
+		mdHard1:
+        begin
+		IronRequired:= 65;
+		A.GiveWares(0, WARE_GOLD, 30);
+		A.GiveWares(0, WARE_STONES, 20);
+		A.GiveWares(0, WARE_TIMBER, 20);
+		A.GiveWares(0, WARE_WINE, 15);
+		A.GiveWares(0, WARE_SAUSAGES, 15);
+		A.GiveWares(0, WARE_LOAVES, 15);
+		A.GiveWares(0, WARE_FISH, 15);
+		///AI eq rates
+		A.AIEquipRate(4, 0, 350);
+		A.AIEquipRate(5, 0, 300);
+		A.AIEquipRate(5, 1, 325);
+		A.AIEquipRate(7, 1, 275);
+		A.AIEquipRate(8, 0, 350);
+		A.AIEquipRate(8, 1, 375);
+		A.AIEquipRate(9, 0, 350);
+		A.AIEquipRate(9, 1, 375);
+		///Delay Enemy
+		A.AIRecruitDelay(4, 16000);
+		A.AIRecruitDelay(5, 20000);
+		A.AIRecruitDelay(7, 25000);
+		A.AIRecruitDelay(8, 33000);
+		A.AIRecruitDelay(9, 33000);
+		///Delay Mercenaries
+		A.AIRecruitDelay(11, 99999999999999);
+		end;
+    end;
+end;
+
+procedure OnTick();
+begin
+CreateConvertedUnits;
+CreateConvertedGroups;
+if S.GameTime = 1800 then begin
+	A.ShowMsgGoto(0, 182, 173, '<$2>');
+	A.FogRevealCircle(0, 2, 30, 4);
+	A.FogRevealCircle(0, 101, 4, 4);
+	A.FogRevealCircle(0, 170, 4, 4);
+	A.FogRevealCircle(0, 130, 66, 4);
+	A.FogRevealCircle(0, 24, 98, 4);
+	A.FogRevealCircle(0, 5, 177, 4);
+	A.FogRevealCircle(0, 176, 83, 4);
+	A.FogRevealCircle(0, 182, 173, 4);
+    end;
+
+if S.GameTime = 17000 then begin
+	A.ShowMsg(0, '<$4>');
+    end;
+
+if States.GameTime mod 3000 = 0 then begin
+    feedPlayer(1);
+  end;
+
+if (Mercenaries) and (States.GameTime MOD 10 = 0) then begin
+    IronCollected:= TotalResourceAmount(0, WARE_IRON);
+	if IronCollected < IronRequired then begin
+	A.OverlayTextSet(0, '<$6>: ' + inttostr(IronCollected)+ '/' + inttostr(IronRequired) + '');
+	end	else
+	A.OverlayTextSet(0, '<$6>[$5BD75B]: ' + inttostr(IronCollected)+ '/' + inttostr(IronRequired) + '[]');
+	end;
+
+if (S.GameTime MOD 10 = 0) and (S.StatArmyCount(11) = 22) and (IronCollected >= IronRequired) and (Paid = false) then begin
+	EventDelay:= S.GameTime;
+	Paid:= true;
+    end;
+
+if (S.GameTime = (EventDelay + 100)) and (Paid = true) then begin
+        A.ShowMsgGoto(0, 10, 100, '<$5>');
+	    Remove_Iron_From_Houses(0, IronRequired);
+		ConvertTroops(11, 0, 64, 104, UNIT_SWORD_FIGHTER, 10, 1);
+		ConvertTroops(11, 0, 59, 104, UNIT_CROSSBOWMAN, 10, 1);
+		Paid:= false;
+	end;
+	
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
+if (S.StatArmyCount(7) > 159) and (AIattack[0] = false) and (S.GameTime MOD 10 = 0) then
+    begin
+	A.AIDefencePositionRemove(7, 34, 171);
+	A.AIDefencePositionRemove(7, 6, 152);
+	A.AIDefencePositionRemove(7, 15, 145);
+	A.AIDefencePositionRemove(7, 21, 137);
+	A.AIDefencePositionRemove(7, 50, 176);
+	A.AIDefencePositionAdd(7, 81, 102, DIRECTION_N, GROUP_MELEE, 15, 0);
+	A.AIDefencePositionAdd(7, 72, 102, DIRECTION_N, GROUP_ANTIHORSE, 15, 0);
+	A.AIDefencePositionAdd(7, 76, 102, DIRECTION_N, GROUP_MOUNTED, 15, 0);
+	A.AIDefencePositionAdd(7, 74, 106, DIRECTION_N, GROUP_RANGED, 15, 0);
+	A.AIDefencePositionAdd(7, 79, 106, DIRECTION_N, GROUP_RANGED, 15, 0);
+	AIattack[0]:= true;
+	end;
+	
+if (S.StatArmyCount(7) >= 164) and (AIattack[0] = true) and (S.GameTime MOD 10 = 0) then
+    begin
+	A.AIDefencePositionRemove(7, 81, 102);
+	A.AIDefencePositionRemove(7, 72, 102);
+	A.AIDefencePositionRemove(7, 76, 102);
+	A.AIDefencePositionRemove(7, 74, 106);
+	A.AIDefencePositionRemove(7, 79, 106);
+	A.AIAttackAdd(7, True, 1, 1, 1, 0, 0, 0, false, attClosestBuildingFromStartPos, pointxy);
+	A.AIAttackAdd(7, True, 1, 1, 0, 1, 0, 0, false, attClosestBuildingFromStartPos, pointxy);
+	A.AIAttackAdd(7, True, 1, 1, 0, 0, 1, 0, false, attClosestUnit, pointxy);
+	A.AIAttackAdd(7, True, 1, 1, 0, 0, 0, 1, false, attClosestUnit, pointxy);
+	end;	
+	
+if (S.StatArmyCount(7) < 132) and (AIattack[0] = true) and (S.GameTime MOD 10 = 0) then
+    begin
+	A.AIDefencePositionRemove(7, 81, 102);
+	A.AIDefencePositionRemove(7, 72, 102);
+	A.AIDefencePositionRemove(7, 76, 102);
+	A.AIDefencePositionRemove(7, 74, 106);
+	A.AIDefencePositionRemove(7, 79, 106);
+	A.AIDefencePositionAdd(7, 34, 171, DIRECTION_E, GROUP_MELEE, 30, 0);
+	A.AIDefencePositionAdd(7, 6, 152, DIRECTION_NE, GROUP_ANTIHORSE, 30, 0);
+	A.AIDefencePositionAdd(7, 15, 145, DIRECTION_NE, GROUP_MOUNTED, 20, 0);
+	A.AIDefencePositionAdd(7, 21, 137, DIRECTION_NE, GROUP_RANGED, 12, 0);
+	A.AIDefencePositionAdd(7, 50, 176, DIRECTION_NE, GROUP_RANGED, 12, 0);
+	A.AIAttackRemoveAll(7);
+	AIattack[0]:= false;
+	end;	
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+if (S.StatArmyCount(8) > 158) and (AIattack[1] = false) and (S.GameTime MOD 10 = 0) then
+    begin
+	A.AIDefencePositionRemove(8, 187, 148);
+	A.AIDefencePositionRemove(8, 153, 177);
+	A.AIDefencePositionRemove(8, 159, 172);
+	A.AIDefencePositionRemove(8, 173, 140);
+	A.AIDefencePositionRemove(8, 177, 168);
+	A.AIDefencePositionRemove(8, 180, 170);
+	A.AIDefencePositionAdd(8, 107, 106, DIRECTION_N, GROUP_MELEE, 15, 0);
+	A.AIDefencePositionAdd(8, 108, 106, DIRECTION_W, GROUP_MELEE, 15, 0);
+	A.AIDefencePositionAdd(8, 99, 114, DIRECTION_W, GROUP_ANTIHORSE, 15, 0);
+	A.AIDefencePositionAdd(8, 100, 114, DIRECTION_W, GROUP_ANTIHORSE, 15, 0);
+	A.AIDefencePositionAdd(8, 103, 110, DIRECTION_NW, GROUP_RANGED, 15, 0);
+	A.AIDefencePositionAdd(8, 104, 110, DIRECTION_NW, GROUP_RANGED, 15, 0);
+	AIattack[1]:= true;
+	end;
+	
+if (S.StatArmyCount(8) >= 164) and (AIattack[1] = true) and (S.GameTime MOD 10 = 0) then
+    begin
+	A.AIDefencePositionRemove(8, 107, 106);
+	A.AIDefencePositionRemove(8, 108, 106);
+	A.AIDefencePositionRemove(8, 99, 114);
+	A.AIDefencePositionRemove(8, 100, 114);
+	A.AIDefencePositionRemove(8, 103, 110);
+	A.AIDefencePositionRemove(8, 104, 110);
+	A.AIAttackAdd(8, True, 1, 1, 1, 0, 0, 0, false, attClosestBuildingFromStartPos, pointxy);
+	A.AIAttackAdd(8, True, 1, 1, 0, 1, 0, 0, false, attClosestBuildingFromStartPos, pointxy);
+	A.AIAttackAdd(8, True, 1, 1, 0, 0, 1, 0, false, attClosestUnit, pointxy);
+	end;	
+	
+if (S.StatArmyCount(8) < 135) and (AIattack[1] = true) and (S.GameTime MOD 10 = 0) then
+    begin
+	A.AIDefencePositionRemove(8, 107, 106);
+	A.AIDefencePositionRemove(8, 108, 106);
+	A.AIDefencePositionRemove(8, 99, 114);
+	A.AIDefencePositionRemove(8, 100, 114);
+	A.AIDefencePositionRemove(8, 103, 110);
+	A.AIDefencePositionRemove(8, 104, 110);
+	A.AIDefencePositionAdd(8, 187, 148, DIRECTION_N, GROUP_MELEE, 35, 0);
+	A.AIDefencePositionAdd(8, 153, 177, DIRECTION_W, GROUP_MELEE, 35, 0);
+	A.AIDefencePositionAdd(8, 159, 172, DIRECTION_W, GROUP_ANTIHORSE, 35, 0);
+	A.AIDefencePositionAdd(8, 173, 140, DIRECTION_W, GROUP_ANTIHORSE, 35, 0);
+	A.AIDefencePositionAdd(8, 177, 168, DIRECTION_NW, GROUP_RANGED, 50, 0);
+	A.AIDefencePositionAdd(8, 180, 170, DIRECTION_NW, GROUP_RANGED, 50, 0);
+	A.AIAttackRemoveAll(8);
+	AIattack[1]:= false;
+	end;	
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////		
+end;
+
+procedure OnPlayerDefeated(aIndex: Integer);
+begin
+if  (aIndex = 2) then begin
+	A.ShowMsg(0, '<$3>');
+	ConvertUnitsInRect(1, 0, 62, 64, 125, 61, 136, 73);
+	end;
+
+if  (aIndex = 3) then begin
+	A.ShowMsg(0, '<$3>');
+	ConvertUnitsInRect(1, 0, 32, 61, 1, 25, 6, 35);
+	end;
+
+if  (aIndex = 4) then begin
+	A.ShowMsg(0, '<$3>');
+	ConvertUnitsInRect(1, 0, 51, 47, 94, 1, 104, 11);
+	end;
+
+if  (aIndex = 5) then begin
+	A.ShowMsg(0, '<$3>');
+	ConvertUnitsInRect(1, 0, 51, 47, 162, 1, 175, 8);
+	end;
+
+if  (aIndex = 6) then begin
+	A.ShowMsg(0, '<$7>');
+	ConvertUnitsInRect(1, 0, 62, 64, 21, 95, 29, 103);
+	A.FogRevealCircle(0, 10, 108, 21);
+	Mercenaries:= true;
+	A.AIRecruitDelay(11, 0);
+	end;
+
+if  (aIndex = 7) then begin
+	A.ShowMsg(0, '<$3>');
+	ConvertUnitsInRect(1, 0, 62, 64, 1, 173, 15, 179);
+	end;
+
+if  (aIndex = 10) then begin
+	A.ShowMsg(0, '<$3>');
+	ConvertUnitsInRect(1, 0, 62, 64, 171, 80, 181, 87);
+	end;
+end;
