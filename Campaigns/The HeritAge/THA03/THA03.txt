@@ -1,0 +1,11 @@
+﻿Author
+Thunder[Beer][HU]
+
+Version
+v1.1
+
+BigDesc
+The HeritAge - Mission 03||Created by [$800080]Thunder[HU][]
+
+PlayableAsSP
+

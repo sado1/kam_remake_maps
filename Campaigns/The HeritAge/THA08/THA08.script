@@ -1,0 +1,446 @@
+﻿//The Night script
+//During the game the vision periodically goes into dark
+const
+MAPX=255;
+MAPY=192;
+PP=1; //max player
+RR=5;	//vision range for units
+RH=10;	//vision range for house 
+
+//spammed barbs
+const
+
+MX = 254;		//size of the map
+MY = 254;		//size of the map
+XA = 234;		//it has to be a walkable tile
+YA = 128;		//it has to be a walkable tile
+MaxX =139;		//over this X coordinat do not add barb
+MaxY =137;		//over this y coordinat do not add barb
+D = 7;			//unit direction
+KK =15;			//repeater counter
+LG = 10;		//Largest Group
+//CL =1;		//unit colum type-this is actually max larger planned group
+
+
+//overlay setup
+INTERFACE_COLOR = 'aaaaaa';
+IRON_COLOR = 'ffffb3';
+LEATHER_COLOR = '3377ff';
+HORSE_COLOR = '003366';
+STAT_COLOR = 'ff6600';
+MAP_TYPE = 0;
+STATS_FOR_ALL = 0;	
+
+var BK: array [0..64000] of Integer;	
+//MKK: array [6..250] of Integer;	
+
+
+
+
+
+//vision for allies
+procedure allyvisions(G,XG,YG,RRG:integer);
+var N:integer;
+begin
+for N:=0 to PP do begin
+		if (States.PlayerAllianceCheck(G,N) = True) then 
+		Actions.FogRevealCircle(N, XG, YG, RRG);
+		
+end;
+end;
+
+//for revealing after cover happened
+procedure RevealFog();
+var J, K, H,UT, HT, HTT: Integer;
+
+begin
+   for J := 0 to MAPY do
+		For K:= 0 to MAPX do
+   begin
+		HT:= States.HouseAt(K,J);
+		UT:= States.UnitAt(K,J);
+
+				
+		if UT > -1 then begin
+			H:= States.UnitOwner(UT);
+			Actions.FogRevealCircle(H, K, J, RR);
+			//vision for ally
+			allyvisions(H,K,J,RR);
+			//vision for scouts
+				if (States.UnitType(UT) = 21) then begin
+					Actions.FogRevealCircle(H, K, J, 14);
+					//vision for the allies too
+					allyvisions(H,K,J,14);
+				end;
+			end;
+			
+		if HT > -1 then begin
+			HTT:= States.HouseOwner(HT);
+			if HTT > -1 then begin
+			Actions.FogRevealCircle(HTT, K, J, RH);
+			//vision for the allies
+			allyvisions(HTT,K,J,RH);
+			//vision for towers
+				if (States.HouseType(HTT) = 17) then begin
+					Actions.FogRevealCircle(HTT, K, J, 15);
+					//vision for the allies too
+					allyvisions(HTT,K,J,15);
+					end;
+			end;
+		
+			
+			end;
+end;
+end;
+
+//covering all
+procedure CoversAll;
+var DDD:integer;
+Begin
+	for DDD := 0 to  (PP - 1) do
+				if States.PlayerEnabled(DDD) then
+				Actions.FogCoverAll(DDD);
+				end;
+
+
+
+
+//procedure OnPlayerDefeated(C: Integer);
+//begin
+//   Actions.FogRevealAll(C);
+//end;
+
+
+procedure OnMissionStart;
+var P, XX, YY, ZZ, WW, DZ, CLX, IZ : Integer;
+var IK, ID, IT, ISQ, IH, IP : Integer;
+var O, H, L, K : Integer;
+var CU, AD : Integer;
+
+begin
+IK := 0 ;			//single
+ID := 0 ;			//duo
+IT := 0 ;			//trio
+ISQ := 0 ;			//squad
+IH := 0 ;				//hex
+IP := 0;				//dec
+
+ for P := 0 to 13 do
+  if States.PlayerEnabled(P) then
+  
+  //single units
+  if P = 13 then begin
+  for IZ:= 0 to IK do
+	begin
+	XX := LG + States.KamRandomI(MX);
+	YY := LG + States.KamRandomI(MY);
+	ZZ := LG + States.KamRandomI(MX);
+	WW := LG + States.KamRandomI(MY);
+	DZ := States.KamRandomI(D);	
+	CLX := 1+States.KamRandomI(1);
+	
+	If (States.ConnectedByWalking(XA,YA,XX,YY) = False) or ((XX > MaxX) and (YY > MaxY)) then begin
+	IK := IK +1;
+	end else
+	If States.ConnectedByWalking(XA,YA,XX,YY) = True then begin
+	Actions.GiveGroup(P,23,XX,YY,DZ,1,CLX);
+	CU := States.ClosestGroup(13,XX,YY,0);
+	AD := States.UnitDirection((States.ClosestUnit(13,XX,YY,0)));
+	Actions.GroupOrderWalk(CU,(MX-ZZ),(MY-WW),D);
+	end;
+   end; 
+   
+   //group with 2 members
+   for O:= 0 to ID do
+	begin
+	XX := (LG-2) + States.KamRandomI(MX);
+	YY := (LG-2) + States.KamRandomI(MY);
+	ZZ := (LG-2) + States.KamRandomI(MX);
+	WW := (LG-2) + States.KamRandomI(MY);
+	DZ := States.KamRandomI(D);	
+	CLX := 1+States.KamRandomI(1);
+		
+	If (States.ConnectedByWalking(XA,YA,XX,YY) = False) or ((XX > MaxX) and (YY > MaxY)) then begin
+	ID := ID +1;
+	end else
+	If States.ConnectedByWalking(XA,YA,XX,YY) = True then begin
+	Actions.GiveGroup(P,23,XX,YY,DZ,2,CLX);	
+	CU := States.ClosestGroup(13,XX,YY,0);
+	AD := States.UnitDirection((States.ClosestUnit(13,XX,YY,0)));
+	Actions.GroupOrderWalk(CU,(MX-ZZ),(MY-WW),D);
+	end;
+   end;
+   
+ 
+ //group with 3 members
+for L:= 0 to IT do
+	begin
+	XX := (LG-3) + States.KamRandomI(MX);
+	YY := (LG-3) + States.KamRandomI(MY);
+	ZZ := (LG-3) + States.KamRandomI(MX);
+	WW := (LG-3) + States.KamRandomI(MY);
+	DZ := States.KamRandomI(D);	
+	CLX := 1+ States.KamRandomI(2);
+	
+	If (States.ConnectedByWalking(XA,YA,XX,YY) = False) or ((XX > MaxX) and (YY > MaxY)) then begin
+	IT := IT +1;
+	end else
+	If States.ConnectedByWalking(XA,YA,XX,YY) = True then begin
+	Actions.GiveGroup(P,23,XX,YY,DZ,3,CLX);	
+	CU := States.ClosestGroup(13,XX,YY,0);
+	AD := States.UnitDirection((States.ClosestUnit(13,XX,YY,0)));
+	Actions.GroupOrderWalk(CU,(MX-ZZ),(MY-WW),D);
+    end;
+   end;
+   
+   //groups with 4 members;  
+   for K:= 0 to ISQ do
+	begin
+	XX := (LG-4) + States.KamRandomI(MX);
+	YY := (LG-4) + States.KamRandomI(MY);
+	ZZ := (LG-4) + States.KamRandomI(MX);
+	WW := (LG-4) + States.KamRandomI(MY);
+	DZ := States.KamRandomI(D);	
+	CLX := 1+States.KamRandomI(3);
+	
+	If (States.ConnectedByWalking(XA,YA,XX,YY) = False) or ((XX > MaxX) and (YY > MaxY)) then begin
+	ISQ := ISQ +1;
+	end else
+	If States.ConnectedByWalking(XA,YA,XX,YY) = True then begin
+	Actions.GiveGroup(P,23,XX,YY,DZ,4,CLX);
+	CU := States.ClosestGroup(13,XX,YY,0);
+	AD := States.UnitDirection((States.ClosestUnit(13,XX,YY,0)));
+	Actions.GroupOrderWalk(CU,(MX-ZZ),(MY-WW),D);
+	end;
+   end;
+   
+   //groups with 6 members;  
+   for H:= 0 to IH do
+	begin
+	XX := (LG-6) + States.KamRandomI(MX);
+	YY := (LG-6) + States.KamRandomI(MY);
+	ZZ := (LG-6) + States.KamRandomI(MX);
+	WW := (LG-6) + States.KamRandomI(MY);
+	DZ := States.KamRandomI(D);	
+	CLX := 1+States.KamRandomI(5);
+	
+	If (States.ConnectedByWalking(XA,YA,XX,YY) = False) or ((XX > MaxX) and (YY > MaxY)) then begin
+	IH := IH +1;
+	end else
+	If States.ConnectedByWalking(XA,YA,XX,YY) = True then begin
+	Actions.GiveGroup(P,23,XX,YY,DZ,6,CLX);
+	CU := States.ClosestGroup(13,XX,YY,0);
+	AD := States.UnitDirection((States.ClosestUnit(13,XX,YY,0)));
+	Actions.GroupOrderWalk(CU,(MX-ZZ),(MY-WW),D);
+	end;
+   end; 
+   
+    //groups with 10 members;  
+   for H:= 0 to IP do
+	begin
+	XX := States.KamRandomI(MX);
+	YY := States.KamRandomI(MY);
+	ZZ := States.KamRandomI(MX);
+	WW := States.KamRandomI(MY);
+	DZ := States.KamRandomI(D);	
+	CLX := 1+States.KamRandomI(9);
+	
+	If (States.ConnectedByWalking(XA,YA,XX,YY) = False) or ((XX > MaxX) and (YY > MaxY)) then begin
+	IH := IH +1;
+	end else
+	If States.ConnectedByWalking(XA,YA,XX,YY) = True then begin
+	Actions.GiveGroup(P,23,XX,YY,DZ,10,CLX);
+	CU := States.ClosestGroup(13,XX,YY,0);
+	AD := States.UnitDirection((States.ClosestUnit(13,XX,YY,0)));
+	Actions.GroupOrderWalk(CU,(MX-ZZ),(MY-WW),D);
+	end;
+   end; 
+   
+   
+   
+end;
+end;
+
+
+
+//kill counter
+procedure OnUnitDied(aUnit, aKiller: Integer);
+var BU, AB, OO, PPP, RRR, GG, KZ, CLY, K :Integer;
+begin
+	if (aKiller <> -1) then
+	begin
+	Inc(BK[aKiller]);
+	
+
+				if (States.UnitOwner(aUnit) = 13) and (States.UnitType(aUnit) = 23) then begin
+						for K := 0 to KK do
+						begin
+						OO := States.KamRandomI(MX);
+						PPP := States.KamRandomI(MY);
+						RRR := States.KamRandomI(MX);
+						GG := States.KamRandomI(MY);
+						KZ := States.KamRandomI(D);	
+						CLY := 1+States.KamRandomI(5);
+						
+						BU := States.ClosestGroup(13,OO,PPP,0);
+						AB := States.UnitDirection((States.ClosestUnit(13,OO,PPP,23)));
+												
+						if (BU > -1) then begin
+							
+							Actions.GroupOrderWalk(BU,(MX-RRR),(MY-GG),D);	
+							end;
+						//end;
+						
+						end;
+				end;
+				
+	//	if BK[aKiller]= 50 then begin
+//			Actions.ShowMsg(aKiller,' What a baker. !');
+//		end;
+		
+//		if BK[aKiller]= 100 then begin
+//			Actions.ShowMsg(aKiller,' As like a Beginner.!');
+//		end;
+		
+//		if BK[aKiller]= 150 then begin
+//			Actions.ShowMsg(aKiller,' Hey Lord! Nice to see you are on the battlefield!');
+//		end;
+//		
+//		if BK[aKiller]= 200 then begin
+//			Actions.ShowMsg(aKiller,' SlowDown Peasant!');
+//		end;
+		
+//		if BK[aKiller]= 300 then begin
+//			Actions.ShowMsg(aKiller,'As like an average Player. ');
+//		end;
+		
+//		if BK[aKiller]= 500 then begin
+//			Actions.ShowMsg(aKiller,'Not a single barb can stop you!');
+//		end;
+		
+//		if BK[aKiller]= 800 then begin
+//			Actions.ShowMsg(aKiller,' Barbs are crying now because they feel the King"s real power!');
+//		end;
+		
+//		if BK[aKiller]= 1000 then begin
+//			Actions.ShowMsg(aKiller,'Killed 1000.!');
+//		end;
+//			
+//		if BK[aKiller]= 2000 then begin
+//			Actions.ShowMsg(aKiller,'Epic!');
+//		end;
+///			
+		end;
+end;
+
+
+
+procedure UpdateOverlay(Gametime, Player: Integer);
+var Time,U,Sec: Integer;
+
+begin
+	Time := (States.PeaceTime - Gametime)/10;
+	Actions.OverlayTextSet(Player,'[$'+INTERFACE_COLOR+']Time: ');
+	if (States.PeaceTime > 0) and (States.PeaceTime > Gametime) then
+	begin
+		Actions.OverlayTextAppend(Player, IntToStr(Time /60) +':');
+		Sec := Time mod 60;
+		if (Sec < 10) then Actions.OverlayTextAppend(Player, '0'+IntToStr(Sec))
+		else Actions.OverlayTextAppend(Player, IntToStr(Sec));
+	end
+	else
+	begin
+		Actions.OverlayTextAppend(Player, IntToStr(Gametime /600) +':');
+		Sec := ((Gametime)/10) mod 60;
+		if (Sec < 10) then Actions.OverlayTextAppend(Player, '0'+IntToStr(Sec))
+		else Actions.OverlayTextAppend(Player, IntToStr(Sec));
+	end;
+	
+	
+	if (States.PeaceTime < Gametime) or (States.PeaceTime = 0) then
+	begin
+		Actions.OverlayTextAppend(Player,'||[$'+ States.PlayerColorText(U) +']Total Kills: ' );
+		for U := 0 to 8 do
+		begin
+			if States.PlayerEnabled(U) and States.PlayerEnabled(Player) then
+				begin
+					if States.PlayerAllianceCheck(Player, U) or (Player = U) or (STATS_FOR_ALL=1) then
+					begin
+						Actions.OverlayTextAppend(Player,'|[$' + States.PlayerColorText(U) + ']' + States.PlayerName(U) +': [$'+STAT_COLOR+']'+ IntToStr(BK[U]) + '[$'+INTERFACE_COLOR+'] kills, [$'+STAT_COLOR+']' );
+					end;
+				end;
+		end;
+	end;
+end;
+
+
+
+
+
+
+
+procedure OnTick;
+var R,LL:integer;
+var I: Integer;
+var UAI: array of Integer;
+var F,PM,HHZ: Integer;
+
+begin
+
+//repeated action for fog cover 
+//if (States.GameTime mod 12000 = 0) then  begin
+//		CoversAll;
+//		RevealFog; 
+//	end;
+
+//messages
+
+	
+LL:= States.GameTime;
+case LL of
+50:Actions.ShowMsg(0, '<$1>');		//welcome message
+60:Actions.ShowMsg(0, '<$2>');		//basic goal info
+41000:Actions.ShowMsg(0, '<$3>'); 		//1st wave on units
+52000:Actions.ShowMsg(0, '<$4>');  //2nd on houses
+68000:Actions.ShowMsg(0, '<$5>');  //3rd on closest unit
+57000:Actions.ShowMsg(0, '<$6>');  //4th vawe starts
+
+	end;
+//if States.GameTime = 36000 then begin
+	//for PM := 0 to 2 do
+	//	Actions.ShowMsg(PM,'Your activity, and aggression on the Barbarian horde are effecting the LandLords too. They are planning attack on you due to the pressure. Be prepared because they are not just defenceless butchers and their numbers are enough high..');
+	//end;
+
+//hunger fo the barbs
+//if (States.GameTime mod 7200 = 0) then begin
+//		UAI := States.PlayerGetAllUnits(13);
+//		for F := 0 to Length(UAI)-1 do
+//			Actions.UnitHungerSet(UAI[F], States.UnitMaxHunger);
+//	end;
+
+//hunger fo the barbs and for all AI
+//if (States.GameTime mod 7200 = 0) then begin
+//For HHZ:= 0 to 13 do begin	//only for testing purpose- unit no need to be fed...good for longterm testing
+//For HHZ:= 0 to 0 do begin
+//		UAI := States.PlayerGetAllUnits(HHZ);
+//		for F := 0 to Length(UAI)-1 do
+//			Actions.UnitHungerSet(UAI[F], States.UnitMaxHunger);
+//		end;
+//end;	
+	
+	//For HHZ:= 8 to 8 do begin
+	//	UAI := States.PlayerGetAllUnits(HHZ);
+	//	for F := 0 to Length(UAI)-1 do
+	//		Actions.UnitHungerSet(UAI[F], States.UnitMaxHunger);
+	//	end;
+//end;	
+
+for I := 0 to 1 do
+		if (States.GameTime + I*2) mod 10 = 0 then
+			UpdateOverlay(States.GameTime, I);
+			
+
+
+
+end;
+

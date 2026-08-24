@@ -1,0 +1,108 @@
+---------------------------------------
+The HeritAge Campaign Notes
+v1.21
+---------------------------------------
+
+The campaign is built and edited by Thunder[Beer][HU].
+
+Translations were supported by:
+Dutch by [Beer]Mithrellas;
+Polish by sado;
+Russian by Ritter_des_Todes;
+English revised by sado and DontTalk;
+
+The overlay dynamic script used from an earlier project written by sado.
+Adventure of Rutenia map is used locations edited by Ben's from MegaLand map project.
+
+Speciel thanks to the Alpha Testers!
+
+---------------------------------------
+
+This is listing the Author times and the key decision factors to solve the maps easily.
+
+///////////////////////////////////////////
+Spoiler alert! Read only on your own risks!
+///////////////////////////////////////////
+
++The building maps were tested 8++hours, so long games easily could be possible. Market, Townhall are enabled, no building restrictions. The win conditions are clearly stated and tested on each maps and Will be communicated via messages by dynamic script also. 
+
++There isn't speciel script used, and no speciel effects added. Expect mission 1 and 2 where couple of the camps does not need to feed themselfs. Anyway, interactions with these camps are not required. I wanted to have a lighthouse as a speciel effect, but lucked with drawing skills ;)
+
++The Classic AI never re-builds destroyed buildings, but time to time has fairly relaibe villages with multiple schools, warehoueses etc.
+
++Couple of the maps are using Advanced AI!! The maps are playable without them-if would like to switch them off in the editor. Also, each map which uses AAI offers chance to get rid of them before start producing units from a barrack. They could be annoying after some time if let them build.
+
+--------------------------------------------------------------------
+If a map has starting army, that is intended to be used either for:
+-scouting,
+-preparing against attack/-s,
+-prevent an opponent start building.
+--------------------------------------------------------------------
+
+
+THA01- 
+TIME:2h10m
+MAP:OUT86
+	The idea was to have dummy villages and should sneak between them to the destiny. The safe passage ways marked by the old pine trees. The bottom right corner has a townhall covered forest and a close village with low spam. This map is definately not a hard one.
+--------------------------------------------------------------------
+THA02-
+TIME:2h48m
+MAP:Double Rods
+	One of the key movement is to take the bottom right corner location meanwhile the schoolhouse builds up. This way only have to focus on two villages later. Top and after bottom left. The bottom right corner'd send annoying milites fairly frequently. 
+--------------------------------------------------------------------
+THA03-
+TIME: ~28m.
+MAP: from map DryHard8P
+	There is a broken part of the Wall on the northen side. Use that as entrance. Before would get there, easily can dance down couple groups of bowmans from the Wall with horses. Diagonal shuting, horsdance, one bow pulling..whatever you need to work this out, the map has plenty of gaps to use.
+--------------------------------------------------------------------
+THA04-
+TIME:~2h45m.
+MAP:DryHard8P
+	Use the starting army to pull the barbarian camps to you allies. Couple of rotation and can prevent their marching to your village. It is an opened map and the barbarians are doing well.. After around 1hour or later your allies will attack. With milities and high numbers. Follow them, and support them with bowman. Can easily pressurize the center of the map. The blue player in the corner has late game effect, you should finish the middle until.
+--------------------------------------------------------------------
+THA05-
+TIME:~2h32m.
+MAP:Bone
+	This map does not have too much coal, it is something have to be traded. It is the only hard task of this mission. Use your starting units to take down the middle bararian villages. Less annoying factor later. Probably one of my favourite map in the whole campaign.
+--------------------------------------------------------------------
+THA06-
+TIME:~10min10sec
+MAP:Végtelen
+	No comment. EZ. March on top...that's all. 
+	*Towers were removed since alpha version.
+--------------------------------------------------------------------
+THA07-
+TIME:~4h23m.
+MAP:Horizon 12P
+	Here, if you would like shorten the game- and this way is intendedly left opened(!)- feed your knights and send them scouting. There is a safe passage way to get 4 player's barracks to prevent them to spam. The locations you can get this way:
+*right
+*top-right corner (have to sneak under the Tower, dancing the stone out or send 3 knights into)
+*top-mid(It is important to take down, because it is palnned to send, and if let, will send huge amount of knights later)
+*top-left corner (it is an Advanced AI which plays as an average player. No mounted units, but reading defence and attack fairly well. I played with it in this mission and uncomfy..)
+You have safely kind of 20 minutes to do this actions.
+	Your ally is going to do fairly good job defending its village and the top bridge. Time to time send some tanky meelee there- so not much need to think about there and could focus on the left mid/top.
+The rest is just invade the villages. Coal is less than the available gold and iron ore, but if nearest village was taken early, you can build there too.
+--------------------------------------------------------------------
+THA08-
+TIME:4h 16m.
+MAP:Tarja
+	This map has an Advanced AI in the top right. Scout to there and take out the villagers. If you let in the game, then that will be really pain in the … later.
+--------------------------------------------------------------------
+THA09-
+TIME:~18m.
+MAP: Adventure of Ruthenia (based on Pince Lothar's map)
+	Nothing speciel. Go to bottom left corner, camp let survive with ~8 meele and ~6 bowman and take down the rest of the map..
+--------------------------------------------------------------------
+THA10-
+TIME:~4h10m
+MAP:Vörös Arany 12P
+	The port finally got the ship planned a decade ago :)  Go with a Group of barbarian and a Group of knights immediatetly to the left bridge, fight down the Group of milities with you strongest units.  One single knight can kill the 2milities which hit barrack. Can do the same to the right side. Let's try couple more times.. The major part of the groups on the ship can survive. Each Storehouse could be defended! But focus the left, the right one is just a bait. Also, the right side will get a huge not really defendable attack wave at 1hour. Going the right side storehouse is as like the amount of armors in there : 1001...a dream ;)
+	The middle port village can be taken down with the amount of starting units given. (~with-in 1 hour for sure). 
+	After the port is down, focus on the left mid village. Make Pikeman/lancers and mass bows. Need a lot, because  that village is a fully iron based at start. If that village is down, then from left side can start push on the top village- just 600-ish units are there.. Meanwhile let the mid-right village attack closest house you have. Build a house close to the port village and use the walls as gaps.. Also Rush the top left corner to take out the Advanced AI's warehouse.
+Now focus on the Top-Mid main enemy's city. If you got that can take the top-right corner, and go take the mid-right location too. That's all.
+--------------------------------------------------------------------
+
+I hope have/had fun!
+t
+
+
